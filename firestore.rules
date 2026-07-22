@@ -1,0 +1,51 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /accounts/{accountId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidAccount();
+      }
+
+      match /transactions/{txnId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidTransaction();
+      }
+
+      match /budgets/{budgetId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidBudget();
+      }
+    }
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function isValidAccount() {
+      let data = request.resource.data;
+      return data.name is string && data.name.size() > 0
+        && data.type in ['cash', 'bank', 'card']
+        && data.archived is bool;
+    }
+
+    function isValidTransaction() {
+      let data = request.resource.data;
+      return data.amount is int && data.amount > 0
+        && data.type in ['income', 'expense', 'transfer_in', 'transfer_out']
+        && data.accountId is string
+        && data.localDate is string
+        && data.localDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function isValidBudget() {
+      let data = request.resource.data;
+      return data.category is string && data.category.size() > 0
+        && data.monthlyLimit is int && data.monthlyLimit > 0;
+    }
+  }
+}
