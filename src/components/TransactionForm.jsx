@@ -1,16 +1,27 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { parseMoneyInput, isValidAmount } from '../lib/money'
 import { todayLocalDate, isFutureDate } from '../lib/dates'
 import { addTransaction, updateTransaction } from '../services/transactions'
 import { addTransfer, updateTransfer } from '../services/transfers'
+import { fetchCustomCategories, addCustomCategory } from '../services/categories'
 
-const CATEGORIES = ['Food', 'Transport', 'Rent', 'Utilities', 'Shopping', 'Health', 'Entertainment', 'Salary', 'Other']
+const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Rent', 'Utilities', 'Shopping', 'Health', 'Entertainment', 'Other']
+const INCOME_CATEGORIES = ['Salary', 'Freelance', 'Investment', 'Gift', 'Other']
 
 export function TransactionForm({ uid, accounts, existing, onClose }) {
   const isTransfer = existing?.type === 'transfer_out' || existing?.type === 'transfer_in'
   const [kind, setKind] = useState(isTransfer ? 'transfer' : (existing?.type ?? 'expense'))
+  const [customCategories, setCustomCategories] = useState({ expense: [], income: [] })
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const categoryOptions = useMemo(() => {
+    const base = kind === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+    const custom = (kind === 'income' ? customCategories.income : customCategories.expense).filter((c) => !base.includes(c))
+    const withoutOther = base.filter((c) => c !== 'Other')
+    return [...withoutOther, ...custom, 'Other']
+  }, [kind, customCategories])
   const [amountInput, setAmountInput] = useState(existing ? String(existing.amount / 100) : '')
-  const [category, setCategory] = useState(existing?.category ?? CATEGORIES[0])
+  const [category, setCategory] = useState(existing?.category ?? categoryOptions[0])
   const [accountId, setAccountId] = useState(existing?.accountId ?? accounts[0]?.id ?? '')
   const [toAccountId, setToAccountId] = useState(existing?.linkedAccountId ?? accounts[1]?.id ?? accounts[0]?.id ?? '')
   const [note, setNote] = useState(existing?.note ?? '')
@@ -18,11 +29,41 @@ export function TransactionForm({ uid, accounts, existing, onClose }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
+  useEffect(() => {
+    let cancelled = false
+    fetchCustomCategories(uid).then((result) => {
+      if (!cancelled) setCustomCategories(result)
+    })
+    return () => { cancelled = true }
+  }, [uid])
+
+  async function handleAddCategory() {
+    const name = newCategoryName.trim()
+    if (!name) return
+    setCategory(name)
+    setCustomCategories((prev) => {
+      const key = kind === 'income' ? 'income' : 'expense'
+      return prev[key].includes(name) ? prev : { ...prev, [key]: [...prev[key], name] }
+    })
+    setAddingCategory(false)
+    setNewCategoryName('')
+    try {
+      await addCustomCategory(uid, kind, name)
+    } catch {
+      // Best-effort: this transaction still saves fine even if persisting
+      // the category name for next time fails.
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
 
     const amount = parseMoneyInput(amountInput)
+    if (addingCategory) {
+      setError('Finish adding the new category first, or cancel it.')
+      return
+    }
     if (!isValidAmount(amount)) {
       setError('Please enter a valid amount greater than zero.')
       return
@@ -49,7 +90,7 @@ export function TransactionForm({ uid, accounts, existing, onClose }) {
       } else {
         await addTransaction(uid, { amount, type: kind, accountId, category, note, localDate: date })
       }
-      onClose()
+      onClose(date)
     } catch (err) {
       setError('Could not save. Please try again.')
     } finally {
@@ -58,7 +99,7 @@ export function TransactionForm({ uid, accounts, existing, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center px-4 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center px-4 z-50" onClick={() => onClose()}>
       <form
         onSubmit={handleSubmit}
         onClick={(e) => e.stopPropagation()}
@@ -72,7 +113,13 @@ export function TransactionForm({ uid, accounts, existing, onClose }) {
             <button
               type="button"
               key={k}
-              onClick={() => setKind(k)}
+              onClick={() => {
+                setKind(k)
+                if (k !== 'transfer') {
+                  const opts = k === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+                  if (!opts.includes(category)) setCategory(opts[0])
+                }
+              }}
               className={`flex-1 rounded py-1.5 border ${kind === k ? 'btn-primary border-transparent' : 'border-[var(--color-hairline)]'}`}
             >
               {k[0].toUpperCase() + k.slice(1)}
@@ -90,9 +137,42 @@ export function TransactionForm({ uid, accounts, existing, onClose }) {
         />
 
         {kind !== 'transfer' && (
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full border border-[var(--color-hairline)] rounded px-3 py-2 bg-white">
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <>
+            <select
+              value={addingCategory ? '__new__' : category}
+              onChange={(e) => {
+                if (e.target.value === '__new__') {
+                  setAddingCategory(true)
+                } else {
+                  setCategory(e.target.value)
+                }
+              }}
+              className="w-full border border-[var(--color-hairline)] rounded px-3 py-2 bg-white"
+            >
+              {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+              <option value="__new__">+ Add new category</option>
+            </select>
+
+            {addingCategory && (
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  placeholder="New category name"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className="flex-1 border border-[var(--color-hairline)] rounded px-3 py-2 bg-white"
+                />
+                <button type="button" onClick={handleAddCategory} className="btn-primary rounded px-3 text-sm">Add</button>
+                <button
+                  type="button"
+                  onClick={() => { setAddingCategory(false); setNewCategoryName('') }}
+                  className="border border-[var(--color-hairline)] rounded px-3 text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="w-full border border-[var(--color-hairline)] rounded px-3 py-2 bg-white">
@@ -121,7 +201,7 @@ export function TransactionForm({ uid, accounts, existing, onClose }) {
         />
 
         <div className="flex gap-2 pt-2">
-          <button type="button" onClick={onClose} className="flex-1 border border-[var(--color-hairline)] rounded py-2">Cancel</button>
+          <button type="button" onClick={() => onClose()} className="flex-1 border border-[var(--color-hairline)] rounded py-2">Cancel</button>
           <button type="submit" disabled={busy} className="btn-primary flex-1 rounded py-2 disabled:opacity-50">Save</button>
         </div>
       </form>
