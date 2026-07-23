@@ -127,9 +127,6 @@ export function Transactions() {
               <div className="flex gap-3 text-xs tabular">
                 {group.income > 0 && <span className="text-[var(--color-income)]">+{formatMoney(group.income, { withSymbol: false })}</span>}
                 {group.expense > 0 && <span className="text-[var(--color-expense)]">-{formatMoney(group.expense, { withSymbol: false })}</span>}
-                <span className={group.income - group.expense >= 0 ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}>
-                  Net {group.income - group.expense >= 0 ? '+' : ''}{formatMoney(group.income - group.expense, { withSymbol: false })}
-                </span>
               </div>
             </div>
             <div className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg divide-y divide-[var(--color-hairline)]">
