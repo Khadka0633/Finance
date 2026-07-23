@@ -66,6 +66,11 @@ export function Transactions() {
     return groups
   }, [displayRows])
 
+  const monthTotals = useMemo(() => {
+    const totals = dayGroups.reduce((acc, g) => ({ income: acc.income + g.income, expense: acc.expense + g.expense }), { income: 0, expense: 0 })
+    return { ...totals, net: totals.income - totals.expense }
+  }, [dayGroups])
+
   async function handleDelete(row) {
     if (row.isTransfer) {
       const deleted = await deleteTransfer(uid, row.transferId)
@@ -83,6 +88,13 @@ export function Transactions() {
         <div>
           <h1 className="text-2xl">Transactions</h1>
           <p className="text-sm text-[var(--color-ink-soft)]">{formatMonthLabel(month)}</p>
+          <div className="flex gap-3 text-xs tabular mt-1">
+            <span className="text-[var(--color-income)]">+{formatMoney(monthTotals.income, { withSymbol: false })}</span>
+            <span className="text-[var(--color-expense)]">-{formatMoney(monthTotals.expense, { withSymbol: false })}</span>
+            <span className={monthTotals.net >= 0 ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}>
+              Net {monthTotals.net >= 0 ? '+' : ''}{formatMoney(monthTotals.net, { withSymbol: false })}
+            </span>
+          </div>
         </div>
         <button onClick={() => { setEditing(null); setShowForm(true) }} className="btn-primary rounded px-4 py-2 text-sm">
           + Add
@@ -115,6 +127,9 @@ export function Transactions() {
               <div className="flex gap-3 text-xs tabular">
                 {group.income > 0 && <span className="text-[var(--color-income)]">+{formatMoney(group.income, { withSymbol: false })}</span>}
                 {group.expense > 0 && <span className="text-[var(--color-expense)]">-{formatMoney(group.expense, { withSymbol: false })}</span>}
+                <span className={group.income - group.expense >= 0 ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}>
+                  Net {group.income - group.expense >= 0 ? '+' : ''}{formatMoney(group.income - group.expense, { withSymbol: false })}
+                </span>
               </div>
             </div>
             <div className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg divide-y divide-[var(--color-hairline)]">
