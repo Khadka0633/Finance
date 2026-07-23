@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useAccounts, useMonthTransactions } from '../hooks/useLedgerData'
-import { currentMonth, formatDateLabel, formatMonthLabel } from '../lib/dates'
-import { withRunningBalance } from '../lib/ledger'
+import { currentMonth, formatDateLabel, formatMonthLabel, monthOf } from '../lib/dates'
 import { formatMoney } from '../lib/money'
 import { deleteTransaction, restoreTransaction } from '../services/transactions'
 import { deleteTransfer, restoreTransfer } from '../services/transfers'
@@ -38,6 +37,8 @@ export function Transactions() {
           amount: t.amount,
           localDate: t.localDate,
           note: t.note,
+          fromAccountId: out?.accountId,
+          toAccountId: inn?.accountId,
           fromName: accounts.find((a) => a.id === out?.accountId)?.name ?? '—',
           toName: accounts.find((a) => a.id === inn?.accountId)?.name ?? '—',
         })
@@ -60,7 +61,7 @@ export function Transactions() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-3">
         <div>
           <h1 className="text-2xl">Transactions</h1>
@@ -103,8 +104,20 @@ export function Transactions() {
               <span className={`tabular text-sm ${row.isTransfer ? 'text-[var(--color-budget)]' : row.type === 'income' ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
                 {row.isTransfer ? '' : row.type === 'income' ? '+' : '-'}{formatMoney(row.amount, { withSymbol: false })}
               </span>
-              <div className="hidden group-hover:flex gap-2 text-xs">
-                <button onClick={() => { setEditing(row.isTransfer ? { ...row, type: 'transfer_out', transferId: row.transferId, accountId: accounts.find(a=>a.name===row.fromName)?.id, linkedAccountId: accounts.find(a=>a.name===row.toName)?.id } : row); setShowForm(true) }} className="underline">Edit</button>
+              <div className="flex gap-2 text-xs sm:hidden sm:group-hover:flex">
+                <button
+                  onClick={() => {
+                    setEditing(
+                      row.isTransfer
+                        ? { ...row, type: 'transfer_out', transferId: row.transferId, accountId: row.fromAccountId, linkedAccountId: row.toAccountId }
+                        : row
+                    )
+                    setShowForm(true)
+                  }}
+                  className="underline"
+                >
+                  Edit
+                </button>
                 <button onClick={() => handleDelete(row)} className="underline text-[var(--color-expense)]">Delete</button>
               </div>
             </div>
@@ -113,7 +126,17 @@ export function Transactions() {
       </div>
 
       {showForm && (
-        <TransactionForm uid={uid} accounts={activeAccounts} existing={editing} onClose={() => setShowForm(false)} />
+        <TransactionForm
+          uid={uid}
+          accounts={activeAccounts}
+          existing={editing}
+          onClose={(savedDate) => {
+            setShowForm(false)
+            if (savedDate && monthOf(savedDate) !== month) {
+              setMonth(monthOf(savedDate))
+            }
+          }}
+        />
       )}
 
       {toast && (

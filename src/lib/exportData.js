@@ -11,9 +11,9 @@ function downloadFile(filename, content, mime) {
 }
 
 function toCsv(transactions) {
-  const header = ['date', 'type', 'category', 'accountId', 'amount_cents', 'note']
+  const header = ['date', 'type', 'category', 'accountId', 'amount', 'amount_cents', 'note']
   const rows = transactions.map((t) =>
-    [t.localDate, t.type, t.category ?? '', t.accountId, t.amount, (t.note ?? '').replace(/,/g, ';')].join(',')
+    [t.localDate, t.type, t.category ?? '', t.accountId, (t.amount / 100).toFixed(2), t.amount, (t.note ?? '').replace(/,/g, ';')].join(',')
   )
   return [header.join(','), ...rows].join('\n')
 }
@@ -26,6 +26,9 @@ export async function exportAllData(uid, format = 'csv') {
   if (format === 'csv') {
     downloadFile(`ledger-export-${stamp}.csv`, toCsv(transactions), 'text/csv')
   } else {
-    downloadFile(`ledger-export-${stamp}.json`, JSON.stringify(transactions, null, 2), 'application/json')
+    // Keep amount_cents as the source of truth (avoids floating-point
+    // rounding), but add a plain decimal amount for readability.
+    const withDecimal = transactions.map((t) => ({ ...t, amount_cents: t.amount, amount: t.amount / 100 }))
+    downloadFile(`ledger-export-${stamp}.json`, JSON.stringify(withDecimal, null, 2), 'application/json')
   }
 }

@@ -7,7 +7,8 @@ import {
   signInWithRedirect,
   signOut,
 } from 'firebase/auth'
-import { auth, googleProvider } from '../lib/firebase'
+import { collection, query, limit, getDocs } from 'firebase/firestore'
+import { auth, googleProvider, db } from '../lib/firebase'
 import { addAccount } from '../services/accounts'
 
 const AuthContext = createContext(null)
@@ -32,7 +33,7 @@ export function AuthProvider({ children }) {
     return unsubscribe
   }, [])
 
-  async function signup(email, password, displayName) {
+  async function signup(email, password) {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     await addAccount(cred.user.uid, { name: 'Cash', type: 'cash' })
     return cred.user
@@ -60,9 +61,11 @@ export function AuthProvider({ children }) {
   }
 
   async function ensureDefaultAccount(uid) {
-    // Best-effort: only meant to run once for a brand new Google user.
-    // Safe to attempt on every login since addAccount is additive, but a
-    // real app would check for an existing account first if this matters.
+    const q = query(collection(db, 'users', uid, 'accounts'), limit(1))
+    const existing = await getDocs(q)
+    if (existing.empty) {
+      await addAccount(uid, { name: 'Cash', type: 'cash' })
+    }
   }
 
   async function logout() {

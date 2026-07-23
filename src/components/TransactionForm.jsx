@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { parseMoneyInput, isValidAmount } from '../lib/money'
 import { todayLocalDate, isFutureDate } from '../lib/dates'
-import { addTransaction, updateTransaction } from '../services/transactions'
+import { addTransaction, updateTransaction, fetchRecentNotes } from '../services/transactions'
 import { addTransfer, updateTransfer } from '../services/transfers'
 import { fetchCustomCategories, addCustomCategory } from '../services/categories'
 
@@ -28,6 +28,15 @@ export function TransactionForm({ uid, accounts, existing, onClose }) {
   const [date, setDate] = useState(existing?.localDate ?? todayLocalDate())
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [recentNotes, setRecentNotes] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+    fetchRecentNotes(uid).then((notes) => {
+      if (!cancelled) setRecentNotes(notes)
+    })
+    return () => { cancelled = true }
+  }, [uid])
 
   useEffect(() => {
     let cancelled = false
@@ -91,7 +100,7 @@ export function TransactionForm({ uid, accounts, existing, onClose }) {
         await addTransaction(uid, { amount, type: kind, accountId, category, note, localDate: date })
       }
       onClose(date)
-    } catch (err) {
+    } catch {
       setError('Could not save. Please try again.')
     } finally {
       setBusy(false)
@@ -154,22 +163,24 @@ export function TransactionForm({ uid, accounts, existing, onClose }) {
             </select>
 
             {addingCategory && (
-              <div className="flex gap-2">
+              <div className="space-y-2">
                 <input
                   autoFocus
                   placeholder="New category name"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
-                  className="flex-1 border border-[var(--color-hairline)] rounded px-3 py-2 bg-white"
+                  className="w-full border border-[var(--color-hairline)] rounded px-3 py-2 bg-white"
                 />
-                <button type="button" onClick={handleAddCategory} className="btn-primary rounded px-3 text-sm">Add</button>
-                <button
-                  type="button"
-                  onClick={() => { setAddingCategory(false); setNewCategoryName('') }}
-                  className="border border-[var(--color-hairline)] rounded px-3 text-sm"
-                >
-                  Cancel
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setAddingCategory(false); setNewCategoryName('') }}
+                    className="flex-1 border border-[var(--color-hairline)] rounded py-1.5 text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button type="button" onClick={handleAddCategory} className="btn-primary flex-1 rounded py-1.5 text-sm">Add</button>
+                </div>
               </div>
             )}
           </>
@@ -197,8 +208,12 @@ export function TransactionForm({ uid, accounts, existing, onClose }) {
           placeholder="Note (optional)"
           value={note}
           onChange={(e) => setNote(e.target.value)}
+          list="note-suggestions"
           className="w-full border border-[var(--color-hairline)] rounded px-3 py-2 bg-white"
         />
+        <datalist id="note-suggestions">
+          {recentNotes.map((n) => <option key={n} value={n} />)}
+        </datalist>
 
         <div className="flex gap-2 pt-2">
           <button type="button" onClick={() => onClose()} className="flex-1 border border-[var(--color-hairline)] rounded py-2">Cancel</button>

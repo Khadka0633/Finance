@@ -1,6 +1,6 @@
 import { useOutletContext, Link } from 'react-router-dom'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from 'recharts'
-import { useAccounts, useBudgets, useMonthTransactions } from '../hooks/useLedgerData'
+import { useAccounts, useMonthTransactions } from '../hooks/useLedgerData'
 import { currentMonth, formatMonthLabel } from '../lib/dates'
 import { getTotalBalance, getIncomeExpenseTotals, getCategoryBreakdown, getAllAccountBalances } from '../lib/ledger'
 import { formatMoney } from '../lib/money'
@@ -23,7 +23,7 @@ export function Dashboard() {
     .slice(0, 5)
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl mb-1">{formatMonthLabel(month)}</h1>
         <p className="text-sm text-[var(--color-ink-soft)]">Dashboard</p>

@@ -53,6 +53,21 @@ export async function fetchTransactionsInRange(uid, fromLocalDate, toLocalDate) 
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
+export async function fetchRecentNotes(uid, max = 50) {
+  const q = query(txnsRef(uid), orderBy('localDate', 'desc'), fsLimit(max))
+  const snap = await getDocs(q)
+  const notes = []
+  const seen = new Set()
+  for (const d of snap.docs) {
+    const note = d.data().note
+    if (note && !seen.has(note)) {
+      seen.add(note)
+      notes.push(note)
+    }
+  }
+  return notes
+}
+
 export async function addTransaction(uid, { amount, type, accountId, category, note, localDate }) {
   return addDoc(txnsRef(uid), {
     amount, // integer cents
@@ -86,6 +101,6 @@ export async function deleteTransaction(uid, txnId) {
 }
 
 /** Recreates a deleted transaction from a previously captured snapshot (for Undo) */
-export async function restoreTransaction(uid, { id, ...data }) {
+export async function restoreTransaction(uid, { id: _id, ...data }) {
   return addDoc(txnsRef(uid), data)
 }

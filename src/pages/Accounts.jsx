@@ -93,7 +93,7 @@ function AccountForm({ uid, onClose }) {
     try {
       await addAccount(uid, { name: name.trim(), type })
       onClose()
-    } catch (err) {
+    } catch {
       setError('Could not save the account. Please try again.')
     } finally {
       setBusy(false)

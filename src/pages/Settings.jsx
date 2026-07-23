@@ -24,14 +24,14 @@ export function Settings() {
     try {
       await deleteMyAccountAndData(uid)
       navigate('/login')
-    } catch (err) {
+    } catch {
       setError('Could not delete your account. If this was a while since you last signed in, please sign out and back in, then try again.')
       setBusy(false)
     }
   }
 
   return (
-    <div className="space-y-8 max-w-lg">
+    <div className="space-y-6 max-w-lg">
       <div>
         <h1 className="text-2xl mb-1">Settings</h1>
         <p className="text-sm text-[var(--color-ink-soft)]">{currentUser?.email}</p>
