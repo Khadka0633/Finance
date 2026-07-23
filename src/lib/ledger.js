@@ -49,15 +49,18 @@ export function getIncomeExpenseTotals(transactions) {
   return { income, expense, net: income - expense }
 }
 
-/** Income and expense totals restricted to a specific set of account IDs */
+/** Income and expense totals restricted to a specific set of account IDs.
+ * Transfers count too: money leaving one of these accounts counts as
+ * expense, money arriving counts as income — matching how each account's
+ * actual balance is affected. */
 export function getIncomeExpenseByAccountIds(transactions, accountIds) {
   const ids = new Set(accountIds)
   let income = 0
   let expense = 0
   for (const txn of transactions) {
     if (!ids.has(txn.accountId)) continue
-    if (txn.type === 'income') income += txn.amount
-    else if (txn.type === 'expense') expense += txn.amount
+    if (txn.type === 'income' || txn.type === 'transfer_in') income += txn.amount
+    else if (txn.type === 'expense' || txn.type === 'transfer_out') expense += txn.amount
   }
   return { income, expense, net: income - expense }
 }

@@ -67,21 +67,28 @@ describe('getIncomeExpenseTotals', () => {
 })
 
 describe('getIncomeExpenseByAccountIds', () => {
-  it('restricts income/expense totals to the given account IDs', () => {
+  it('restricts income/expense totals to the given account IDs, including transfers out', () => {
+    // cash: income 10000; expense 2000 + 1500 + 3000 (transfer out) = 6500
     const { income, expense, net } = getIncomeExpenseByAccountIds(txns, ['cash'])
     expect(income).toBe(10000)
-    expect(expense).toBe(3500)
-    expect(net).toBe(6500)
+    expect(expense).toBe(6500)
+    expect(net).toBe(3500)
+  })
+  it('counts a transfer in as income for the receiving account', () => {
+    const { income, expense } = getIncomeExpenseByAccountIds(txns, ['bank'])
+    expect(income).toBe(3000)
+    expect(expense).toBe(0)
   })
   it('returns zeros when no transactions match the given IDs', () => {
-    const { income, expense } = getIncomeExpenseByAccountIds(txns, ['bank'])
+    const { income, expense } = getIncomeExpenseByAccountIds(txns, ['wallet'])
     expect(income).toBe(0)
     expect(expense).toBe(0)
   })
   it('sums across multiple account IDs', () => {
     const extra = [...txns, { id: 't6', accountId: 'bank', type: 'income', amount: 500, category: 'Interest', localDate: '2026-07-15' }]
+    // cash income 10000 + bank transfer-in 3000 + bank income 500 = 13500
     const { income } = getIncomeExpenseByAccountIds(extra, ['cash', 'bank'])
-    expect(income).toBe(10500)
+    expect(income).toBe(13500)
   })
 })
 

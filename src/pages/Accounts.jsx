@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useAccounts, useMonthTransactions } from '../hooks/useLedgerData'
 import { currentMonth } from '../lib/dates'
-import { getAllAccountBalances, getIncomeExpenseByAccountIds } from '../lib/ledger'
+import { getAllAccountBalances } from '../lib/ledger'
 import { formatMoney } from '../lib/money'
 import { addAccount, unarchiveAccount, deleteAccount, updateAccount } from '../services/accounts'
 
@@ -48,22 +48,23 @@ export function Accounts() {
       {TYPES.map((t) => {
         const group = active.filter((a) => a.type === t.value)
         if (group.length === 0) return null
-        const totals = getIncomeExpenseByAccountIds(transactions, group.map((a) => a.id))
+        const groupTotal = group.reduce((sum, a) => sum + (balances.get(a.id) ?? 0), 0)
         return (
           <div key={t.value}>
             <div className="flex items-baseline gap-3 mb-2">
               <h2 className="text-sm text-[var(--color-ink-soft)] uppercase tracking-wide">{t.label}</h2>
-              <div className="flex gap-3 text-xs tabular">
-                <span className="text-[var(--color-income)]">+{formatMoney(totals.income, { withSymbol: false })}</span>
-                <span className="text-[var(--color-expense)]">-{formatMoney(totals.expense, { withSymbol: false })}</span>
-              </div>
+              <span className={`text-xs tabular ${groupTotal >= 0 ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
+                {formatMoney(groupTotal)}
+              </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {group.map((a) => (
                 <div key={a.id} className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg p-4 flex justify-between items-start">
                   <div>
                     <p className="text-lg">{a.name}</p>
-                    <p className="tabular text-xl mt-1">{formatMoney(balances.get(a.id) ?? 0)}</p>
+                    <p className={`tabular text-xl mt-1 ${(balances.get(a.id) ?? 0) >= 0 ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
+                      {formatMoney(balances.get(a.id) ?? 0)}
+                    </p>
                   </div>
                   <div className="flex flex-col gap-1 text-xs">
                     <button onClick={() => setEditing(a)} className="underline text-[var(--color-ink-soft)]">Edit</button>
