@@ -49,6 +49,23 @@ export function Transactions() {
     return rows.sort((a, b) => (a.localDate < b.localDate ? 1 : -1))
   }, [transactions, accounts, accountFilter])
 
+  // Group into day buckets (displayRows is already sorted newest-first,
+  // so same-date rows land next to each other without re-sorting).
+  const dayGroups = useMemo(() => {
+    const groups = []
+    let current = null
+    for (const row of displayRows) {
+      if (!current || current.date !== row.localDate) {
+        current = { date: row.localDate, rows: [], income: 0, expense: 0 }
+        groups.push(current)
+      }
+      current.rows.push(row)
+      if (row.type === 'income') current.income += row.amount
+      if (row.type === 'expense') current.expense += row.amount
+    }
+    return groups
+  }, [displayRows])
+
   async function handleDelete(row) {
     if (row.isTransfer) {
       const deleted = await deleteTransfer(uid, row.transferId)
@@ -85,41 +102,56 @@ export function Transactions() {
         </select>
       </div>
 
-      <div className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg divide-y divide-[var(--color-hairline)]">
-        {displayRows.length === 0 && (
-          <p className="p-4 text-sm text-[var(--color-ink-soft)]">No transactions for this period.</p>
+      <div className="space-y-4">
+        {dayGroups.length === 0 && (
+          <p className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg p-4 text-sm text-[var(--color-ink-soft)]">
+            No transactions for this period.
+          </p>
         )}
-        {displayRows.map((row) => (
-          <div key={row.id} className="flex justify-between items-center px-4 py-3 group">
-            <div className="min-w-0">
-              <p className="text-sm">
-                {row.isTransfer ? `Transfer: ${row.fromName} → ${row.toName}` : (row.category || (row.type === 'income' ? 'Income' : 'Expense'))}
-              </p>
-              <p className="text-xs text-[var(--color-ink-soft)] truncate">
-                {formatDateLabel(row.localDate)}{row.note ? ` · ${row.note}` : ''}
-                {row._pending && ' · pending sync'}
-              </p>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <span className={`tabular text-sm ${row.isTransfer ? 'text-[var(--color-budget)]' : row.type === 'income' ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
-                {row.isTransfer ? '' : row.type === 'income' ? '+' : '-'}{formatMoney(row.amount, { withSymbol: false })}
-              </span>
-              <div className="flex gap-2 text-xs sm:hidden sm:group-hover:flex">
-                <button
-                  onClick={() => {
-                    setEditing(
-                      row.isTransfer
-                        ? { ...row, type: 'transfer_out', transferId: row.transferId, accountId: row.fromAccountId, linkedAccountId: row.toAccountId }
-                        : row
-                    )
-                    setShowForm(true)
-                  }}
-                  className="underline"
-                >
-                  Edit
-                </button>
-                <button onClick={() => handleDelete(row)} className="underline text-[var(--color-expense)]">Delete</button>
+        {dayGroups.map((group) => (
+          <div key={group.date}>
+            <div className="flex justify-between items-baseline px-1 mb-1.5">
+              <h3 className="text-sm text-[var(--color-ink-soft)]">{formatDateLabel(group.date)}</h3>
+              <div className="flex gap-3 text-xs tabular">
+                {group.income > 0 && <span className="text-[var(--color-income)]">+{formatMoney(group.income, { withSymbol: false })}</span>}
+                {group.expense > 0 && <span className="text-[var(--color-expense)]">-{formatMoney(group.expense, { withSymbol: false })}</span>}
               </div>
+            </div>
+            <div className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg divide-y divide-[var(--color-hairline)]">
+              {group.rows.map((row) => (
+                <div key={row.id} className="flex justify-between items-center px-4 py-3 group">
+                  <div className="min-w-0">
+                    <p className="text-sm">
+                      {row.isTransfer ? `Transfer: ${row.fromName} → ${row.toName}` : (row.category || (row.type === 'income' ? 'Income' : 'Expense'))}
+                    </p>
+                    <p className="text-xs text-[var(--color-ink-soft)] truncate">
+                      {row.note || '\u00A0'}
+                      {row._pending && ' · pending sync'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={`tabular text-sm ${row.isTransfer ? 'text-[var(--color-budget)]' : row.type === 'income' ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
+                      {row.isTransfer ? '' : row.type === 'income' ? '+' : '-'}{formatMoney(row.amount, { withSymbol: false })}
+                    </span>
+                    <div className="flex gap-2 text-xs sm:hidden sm:group-hover:flex">
+                      <button
+                        onClick={() => {
+                          setEditing(
+                            row.isTransfer
+                              ? { ...row, type: 'transfer_out', transferId: row.transferId, accountId: row.fromAccountId, linkedAccountId: row.toAccountId }
+                              : row
+                          )
+                          setShowForm(true)
+                        }}
+                        className="underline"
+                      >
+                        Edit
+                      </button>
+                      <button onClick={() => handleDelete(row)} className="underline text-[var(--color-expense)]">Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ))}
