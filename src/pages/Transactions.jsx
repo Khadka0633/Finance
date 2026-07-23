@@ -30,6 +30,7 @@ export function Transactions() {
         const other = transactions.find((x) => x.transferId === t.transferId && x.id !== t.id)
         const out = t.type === 'transfer_out' ? t : other
         const inn = t.type === 'transfer_in' ? t : other
+        if (accountFilter !== 'all' && out?.accountId !== accountFilter && inn?.accountId !== accountFilter) continue
         rows.push({
           id: t.transferId,
           isTransfer: true,
@@ -60,11 +61,20 @@ export function Transactions() {
         groups.push(current)
       }
       current.rows.push(row)
-      if (row.type === 'income') current.income += row.amount
-      if (row.type === 'expense') current.expense += row.amount
+      if (row.isTransfer) {
+        // Transfers don't change the app-wide total, but from a single
+        // account's point of view money is genuinely leaving/entering it.
+        if (accountFilter !== 'all') {
+          if (row.fromAccountId === accountFilter) current.expense += row.amount
+          if (row.toAccountId === accountFilter) current.income += row.amount
+        }
+      } else {
+        if (row.type === 'income') current.income += row.amount
+        if (row.type === 'expense') current.expense += row.amount
+      }
     }
     return groups
-  }, [displayRows])
+  }, [displayRows, accountFilter])
 
   const monthTotals = useMemo(() => {
     const totals = dayGroups.reduce((acc, g) => ({ income: acc.income + g.income, expense: acc.expense + g.expense }), { income: 0, expense: 0 })
@@ -134,7 +144,14 @@ export function Transactions() {
                 <div key={row.id} className="flex justify-between items-center px-4 py-3 group">
                   <div className="min-w-0">
                     <p className="text-sm">
-                      {row.isTransfer ? `Transfer: ${row.fromName} → ${row.toName}` : (row.category || (row.type === 'income' ? 'Income' : 'Expense'))}
+                      {row.isTransfer
+                        ? `Transfer: ${row.fromName} → ${row.toName}`
+                        : (row.category || (row.type === 'income' ? 'Income' : 'Expense'))}
+                      {!row.isTransfer && accountFilter === 'all' && (
+                        <span className="text-[var(--color-ink-soft)] font-normal">
+                          {' · '}{accounts.find((a) => a.id === row.accountId)?.name ?? '—'}
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-[var(--color-ink-soft)] truncate">
                       {row.note || '\u00A0'}

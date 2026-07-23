@@ -2,14 +2,16 @@ import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useAccounts, useMonthTransactions } from '../hooks/useLedgerData'
 import { currentMonth } from '../lib/dates'
-import { getAllAccountBalances } from '../lib/ledger'
+import { getAllAccountBalances, getIncomeExpenseByAccountIds } from '../lib/ledger'
 import { formatMoney } from '../lib/money'
-import { addAccount, archiveAccount, unarchiveAccount, deleteAccount } from '../services/accounts'
+import { addAccount, unarchiveAccount, deleteAccount, updateAccount } from '../services/accounts'
 
 const TYPES = [
   { value: 'cash', label: 'Cash' },
   { value: 'bank', label: 'Bank' },
   { value: 'card', label: 'Card' },
+  { value: 'wallet', label: 'Wallet' },
+  { value: 'loan', label: 'Loan' },
 ]
 
 export function Accounts() {
@@ -18,6 +20,7 @@ export function Accounts() {
   const { transactions } = useMonthTransactions(uid, currentMonth())
   const balances = getAllAccountBalances(accounts, transactions)
   const [showForm, setShowForm] = useState(false)
+  const [editing, setEditing] = useState(null)
   const [error, setError] = useState('')
 
   const active = accounts.filter((a) => !a.archived)
@@ -42,21 +45,36 @@ export function Accounts() {
 
       {error && <p className="text-sm text-[var(--color-expense)]">{error}</p>}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {active.map((a) => (
-          <div key={a.id} className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg p-4 flex justify-between items-start">
-            <div>
-              <p className="text-xs text-[var(--color-ink-soft)] uppercase tracking-wide">{a.type}</p>
-              <p className="text-lg">{a.name}</p>
-              <p className="tabular text-xl mt-1">{formatMoney(balances.get(a.id) ?? 0)}</p>
+      {TYPES.map((t) => {
+        const group = active.filter((a) => a.type === t.value)
+        if (group.length === 0) return null
+        const totals = getIncomeExpenseByAccountIds(transactions, group.map((a) => a.id))
+        return (
+          <div key={t.value}>
+            <div className="flex items-baseline gap-3 mb-2">
+              <h2 className="text-sm text-[var(--color-ink-soft)] uppercase tracking-wide">{t.label}</h2>
+              <div className="flex gap-3 text-xs tabular">
+                <span className="text-[var(--color-income)]">+{formatMoney(totals.income, { withSymbol: false })}</span>
+                <span className="text-[var(--color-expense)]">-{formatMoney(totals.expense, { withSymbol: false })}</span>
+              </div>
             </div>
-            <div className="flex flex-col gap-1 text-xs">
-              <button onClick={() => archiveAccount(uid, a.id)} className="underline text-[var(--color-ink-soft)]">Archive</button>
-              <button onClick={() => handleDelete(a)} className="underline text-[var(--color-expense)]">Delete</button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {group.map((a) => (
+                <div key={a.id} className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg p-4 flex justify-between items-start">
+                  <div>
+                    <p className="text-lg">{a.name}</p>
+                    <p className="tabular text-xl mt-1">{formatMoney(balances.get(a.id) ?? 0)}</p>
+                  </div>
+                  <div className="flex flex-col gap-1 text-xs">
+                    <button onClick={() => setEditing(a)} className="underline text-[var(--color-ink-soft)]">Edit</button>
+                    <button onClick={() => handleDelete(a)} className="underline text-[var(--color-expense)]">Delete</button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
+        )
+      })}
 
       {archived.length > 0 && (
         <div>
@@ -73,13 +91,14 @@ export function Accounts() {
       )}
 
       {showForm && <AccountForm uid={uid} onClose={() => setShowForm(false)} />}
+      {editing && <AccountForm uid={uid} existing={editing} onClose={() => setEditing(null)} />}
     </div>
   )
 }
 
-function AccountForm({ uid, onClose }) {
-  const [name, setName] = useState('')
-  const [type, setType] = useState('cash')
+function AccountForm({ uid, existing, onClose }) {
+  const [name, setName] = useState(existing?.name ?? '')
+  const [type, setType] = useState(existing?.type ?? 'cash')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -91,7 +110,11 @@ function AccountForm({ uid, onClose }) {
     }
     setBusy(true)
     try {
-      await addAccount(uid, { name: name.trim(), type })
+      if (existing) {
+        await updateAccount(uid, existing.id, { name: name.trim(), type })
+      } else {
+        await addAccount(uid, { name: name.trim(), type })
+      }
       onClose()
     } catch {
       setError('Could not save the account. Please try again.')
@@ -107,7 +130,7 @@ function AccountForm({ uid, onClose }) {
         onClick={(e) => e.stopPropagation()}
         className="bg-[var(--color-paper-raised)] rounded-lg p-6 w-full max-w-sm space-y-3"
       >
-        <h2 className="text-lg mb-2">New account</h2>
+        <h2 className="text-lg mb-2">{existing ? 'Edit account' : 'New account'}</h2>
         {error && <p className="text-sm text-[var(--color-expense)]">{error}</p>}
         <input
           autoFocus

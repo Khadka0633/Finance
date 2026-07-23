@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from 'recharts'
 import { fetchTransactionsInRange } from '../services/transactions'
 import { getCategoryBreakdown } from '../lib/ledger'
 import { formatMoney } from '../lib/money'
@@ -141,12 +141,15 @@ export function Reports() {
               {viewMode === 'month' ? `Income vs. expense — ${formatMonthLabel(selectedMonth)}` : 'Income vs. expense by month'}
             </h2>
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={trend}>
+              <BarChart data={trend} margin={{ top: 20 }}>
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v) => formatMoney(v * 100)} />
-                <Bar dataKey="income" fill="var(--color-income)" />
-                <Bar dataKey="expense" fill="var(--color-expense)" />
+                <Bar dataKey="income" fill="var(--color-income)">
+                  <LabelList dataKey="income" position="top" formatter={(v) => formatMoney(v * 100, { withSymbol: false })} style={{ fontSize: 11, fill: 'var(--color-income)' }} />
+                </Bar>
+                <Bar dataKey="expense" fill="var(--color-expense)">
+                  <LabelList dataKey="expense" position="top" formatter={(v) => formatMoney(v * 100, { withSymbol: false })} style={{ fontSize: 11, fill: 'var(--color-expense)' }} />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>

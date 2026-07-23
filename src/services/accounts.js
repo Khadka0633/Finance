@@ -27,7 +27,7 @@ export function subscribeAccounts(uid, callback) {
 export async function addAccount(uid, { name, type, archived = false }) {
   return addDoc(accountsRef(uid), {
     name,
-    type, // 'cash' | 'bank' | 'card'
+    type, // 'cash' | 'bank' | 'card' | 'wallet' | 'loan'
     archived,
     createdAt: new Date().toISOString(),
   })

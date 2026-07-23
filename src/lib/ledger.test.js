@@ -4,6 +4,7 @@ import {
   getAllAccountBalances,
   getTotalBalance,
   getIncomeExpenseTotals,
+  getIncomeExpenseByAccountIds,
   getCategoryBreakdown,
   getSpentByCategory,
   getBudgetStatus,
@@ -62,6 +63,25 @@ describe('getIncomeExpenseTotals', () => {
     const { income, expense } = getIncomeExpenseTotals(onlyTransfers)
     expect(income).toBe(0)
     expect(expense).toBe(0)
+  })
+})
+
+describe('getIncomeExpenseByAccountIds', () => {
+  it('restricts income/expense totals to the given account IDs', () => {
+    const { income, expense, net } = getIncomeExpenseByAccountIds(txns, ['cash'])
+    expect(income).toBe(10000)
+    expect(expense).toBe(3500)
+    expect(net).toBe(6500)
+  })
+  it('returns zeros when no transactions match the given IDs', () => {
+    const { income, expense } = getIncomeExpenseByAccountIds(txns, ['bank'])
+    expect(income).toBe(0)
+    expect(expense).toBe(0)
+  })
+  it('sums across multiple account IDs', () => {
+    const extra = [...txns, { id: 't6', accountId: 'bank', type: 'income', amount: 500, category: 'Interest', localDate: '2026-07-15' }]
+    const { income } = getIncomeExpenseByAccountIds(extra, ['cash', 'bank'])
+    expect(income).toBe(10500)
   })
 })
 

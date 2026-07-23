@@ -49,6 +49,19 @@ export function getIncomeExpenseTotals(transactions) {
   return { income, expense, net: income - expense }
 }
 
+/** Income and expense totals restricted to a specific set of account IDs */
+export function getIncomeExpenseByAccountIds(transactions, accountIds) {
+  const ids = new Set(accountIds)
+  let income = 0
+  let expense = 0
+  for (const txn of transactions) {
+    if (!ids.has(txn.accountId)) continue
+    if (txn.type === 'income') income += txn.amount
+    else if (txn.type === 'expense') expense += txn.amount
+  }
+  return { income, expense, net: income - expense }
+}
+
 /** Group expense transactions by category, summing amounts (transfers excluded) */
 export function getCategoryBreakdown(transactions) {
   const map = new Map()
