@@ -66,10 +66,10 @@ export function getIncomeExpenseByAccountIds(transactions, accountIds) {
 }
 
 /** Group expense transactions by category, summing amounts (transfers excluded) */
-export function getCategoryBreakdown(transactions) {
+export function getCategoryBreakdown(transactions, type = 'expense') {
   const map = new Map()
   for (const txn of transactions) {
-    if (txn.type !== 'expense') continue
+    if (txn.type !== type) continue
     map.set(txn.category, (map.get(txn.category) ?? 0) + txn.amount)
   }
   return Array.from(map.entries())

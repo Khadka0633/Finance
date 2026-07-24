@@ -7,7 +7,7 @@ import { getCategoryBreakdown } from '../lib/ledger'
 import { formatMoney } from '../lib/money'
 import { monthOf, currentMonth, todayLocalDate, formatMonthLabel } from '../lib/dates'
 
-function renderTrendPointLabel(props, totalPoints) {
+function renderTrendPointLabel(props, totalPoints, type = 'expense') {
   const { x, y, value, index } = props
   if (!value) return null
   const isLast = index === totalPoints - 1
@@ -18,7 +18,7 @@ function renderTrendPointLabel(props, totalPoints) {
       textAnchor={isLast ? 'end' : 'middle'}
       dx={isLast ? 4 : 0}
       fontSize={10}
-      fill="var(--color-expense)"
+      fill={type === 'income' ? 'var(--color-income)' : 'var(--color-expense)'}
     >
       {formatMoney(value * 100, { withSymbol: false })}
     </text>
@@ -34,6 +34,7 @@ export function Reports() {
   const [viewMode, setViewMode] = useState('range') // 'range' | 'month'
   const [selectedMonth, setSelectedMonth] = useState(currentMonth())
   const [selectedCategory, setSelectedCategory] = useState(null)
+  const [selectedType, setSelectedType] = useState('expense')
 
   useEffect(() => {
     if (!uid) return
@@ -63,7 +64,8 @@ export function Reports() {
     })
   }, [uid, months, viewMode, selectedMonth])
 
-  const breakdown = getCategoryBreakdown(transactions)
+  const breakdown = getCategoryBreakdown(transactions, 'expense')
+  const incomeBreakdown = getCategoryBreakdown(transactions, 'income')
 
   const trend = Object.values(
     transactions.reduce((acc, t) => {
@@ -99,9 +101,18 @@ export function Reports() {
   // recent month in the range (matches the rightmost point on the chart).
   const categoryListMonth = viewMode === 'month' ? selectedMonth : currentMonth()
 
+  function selectCategory(category, type) {
+    if (selectedCategory === category && selectedType === type) {
+      setSelectedCategory(null)
+    } else {
+      setSelectedCategory(category)
+      setSelectedType(type)
+    }
+  }
+
   const categoryTransactions = selectedCategory
     ? transactions
-        .filter((t) => t.type === 'expense' && t.category === selectedCategory && monthOf(t.localDate) === categoryListMonth)
+        .filter((t) => t.type === selectedType && t.category === selectedCategory && monthOf(t.localDate) === categoryListMonth)
         .sort((a, b) => (a.localDate < b.localDate ? 1 : -1))
     : []
 
@@ -110,14 +121,14 @@ export function Reports() {
         if (viewMode === 'month') {
           const sums = {}
           for (const t of transactions) {
-            if (t.type !== 'expense' || t.category !== selectedCategory) continue
+            if (t.type !== selectedType || t.category !== selectedCategory) continue
             sums[t.localDate] = (sums[t.localDate] ?? 0) + t.amount / 100
           }
           return daysInMonth(selectedMonth).map((d) => ({ label: d.slice(8), amount: sums[d] ?? 0 }))
         }
         const sums = {}
         for (const t of transactions) {
-          if (t.type !== 'expense' || t.category !== selectedCategory) continue
+          if (t.type !== selectedType || t.category !== selectedCategory) continue
           const m = monthOf(t.localDate)
           sums[m] = (sums[m] ?? 0) + t.amount / 100
         }
@@ -186,19 +197,36 @@ export function Reports() {
           </div>
 
           <div>
-            <h2 className="text-sm text-[var(--color-ink-soft)] mb-2">Top categories</h2>
+            <h2 className="text-sm text-[var(--color-ink-soft)] mb-2">Top expense categories</h2>
             <div className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg divide-y divide-[var(--color-hairline)]">
               {breakdown.slice(0, 10).map((b) => (
                 <button
                   key={b.category}
-                  onClick={() => setSelectedCategory(selectedCategory === b.category ? null : b.category)}
-                  className={`w-full flex justify-between px-4 py-2 text-sm text-left ${selectedCategory === b.category ? 'bg-[var(--color-hairline)]/40' : ''}`}
+                  onClick={() => selectCategory(b.category, 'expense')}
+                  className={`w-full flex justify-between px-4 py-2 text-sm text-left ${selectedType === 'expense' && selectedCategory === b.category ? 'bg-[var(--color-hairline)]/40' : ''}`}
                 >
                   <span>{b.category}</span>
                   <span className="tabular">{formatMoney(b.amount)}</span>
                 </button>
               ))}
               {breakdown.length === 0 && <p className="p-4 text-sm text-[var(--color-ink-soft)]">No spending in this period.</p>}
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-sm text-[var(--color-ink-soft)] mb-2">Top income categories</h2>
+            <div className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg divide-y divide-[var(--color-hairline)]">
+              {incomeBreakdown.slice(0, 10).map((b) => (
+                <button
+                  key={b.category}
+                  onClick={() => selectCategory(b.category, 'income')}
+                  className={`w-full flex justify-between px-4 py-2 text-sm text-left ${selectedType === 'income' && selectedCategory === b.category ? 'bg-[var(--color-hairline)]/40' : ''}`}
+                >
+                  <span>{b.category}</span>
+                  <span className="tabular text-[var(--color-income)]">{formatMoney(b.amount)}</span>
+                </button>
+              ))}
+              {incomeBreakdown.length === 0 && <p className="p-4 text-sm text-[var(--color-ink-soft)]">No income in this period.</p>}
             </div>
           </div>
 
@@ -214,8 +242,17 @@ export function Reports() {
                 <LineChart data={categoryTrend} margin={{ top: 24, right: 24 }} accessibilityLayer={false}>
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Line type="monotone" dataKey="amount" stroke="var(--color-expense)" strokeWidth={2} dot={{ r: 3 }}>
-                    <LabelList dataKey="amount" content={(p) => renderTrendPointLabel(p, categoryTrend.length)} />
+                  <Line
+                    type="monotone"
+                    dataKey="amount"
+                    stroke={selectedType === 'income' ? 'var(--color-income)' : 'var(--color-expense)'}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  >
+                    <LabelList
+                      dataKey="amount"
+                      content={(p) => renderTrendPointLabel(p, categoryTrend.length, selectedType)}
+                    />
                   </Line>
                 </LineChart>
               </ResponsiveContainer>
@@ -233,7 +270,9 @@ export function Reports() {
                         <p>{accounts.find((a) => a.id === t.accountId)?.name ?? '—'}</p>
                         <p className="text-xs text-[var(--color-ink-soft)]">{t.localDate}{t.note ? ` · ${t.note}` : ''}</p>
                       </div>
-                      <span className="tabular text-[var(--color-expense)]">-{formatMoney(t.amount, { withSymbol: false })}</span>
+                      <span className={`tabular ${selectedType === 'income' ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
+                        {selectedType === 'income' ? '+' : '-'}{formatMoney(t.amount, { withSymbol: false })}
+                      </span>
                     </div>
                   ))}
                 </div>

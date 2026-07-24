@@ -101,6 +101,10 @@ describe('getCategoryBreakdown', () => {
     const breakdown = getCategoryBreakdown(txns)
     expect(breakdown.find((b) => b.category === 'Salary')).toBeUndefined()
   })
+  it('groups by income category when type is "income"', () => {
+    const breakdown = getCategoryBreakdown(txns, 'income')
+    expect(breakdown).toEqual([{ category: 'Salary', amount: 10000 }])
+  })
 })
 
 describe('getSpentByCategory', () => {
