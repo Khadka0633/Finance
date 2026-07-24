@@ -53,6 +53,19 @@ export async function fetchTransactionsInRange(uid, fromLocalDate, toLocalDate) 
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
+/**
+ * One-time (non-live) fetch of a user's ENTIRE transaction history.
+ * Used where a true all-time total is needed (account balances, the
+ * Dashboard's total balance card, and the income/expense "Total" toggle)
+ * without paying for a live listener across a growing history — mirrors
+ * fetchTransactionsInRange's trade-off above, just unbounded by date.
+ */
+export async function fetchAllTransactions(uid) {
+  const q = query(txnsRef(uid), orderBy('localDate', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
 export async function fetchRecentNotes(uid, max = 50) {
   const q = query(txnsRef(uid), orderBy('localDate', 'desc'), fsLimit(max))
   const snap = await getDocs(q)

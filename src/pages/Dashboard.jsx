@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useOutletContext, Link } from 'react-router-dom'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, LabelList } from 'recharts'
-import { useAccounts, useMonthTransactions } from '../hooks/useLedgerData'
+import { useAccounts, useMonthTransactions, useAllTransactions } from '../hooks/useLedgerData'
 import { currentMonth, formatMonthLabel } from '../lib/dates'
 import { getTotalBalance, getIncomeExpenseTotals, getCategoryBreakdown, getAllAccountBalances } from '../lib/ledger'
 import { formatMoney } from '../lib/money'
@@ -82,16 +82,17 @@ function renderCategoryLabelLine({ cx, cy, midAngle, outerRadius, percent }) {
 export function Dashboard() {
   const { uid } = useOutletContext()
   const [pieView, setPieView] = useState('expense')
-  const month = currentMonth()
+  const [month, setMonth] = useState(currentMonth())
   const accounts = useAccounts(uid)
   const { transactions, loading } = useMonthTransactions(uid, month)
+  const { transactions: allTransactions } = useAllTransactions(uid)
 
-  const totalBalance = getTotalBalance(accounts, transactions)
-  const { income, expense } = getIncomeExpenseTotals(transactions)
+  const totalBalance = getTotalBalance(accounts, allTransactions)
+  const { income, expense } = getIncomeExpenseTotals(allTransactions)
   const breakdown = getCategoryBreakdown(transactions, 'expense')
   const incomeBreakdown = getCategoryBreakdown(transactions, 'income')
   const activeBreakdown = pieView === 'income' ? incomeBreakdown : breakdown
-  const accountBalances = getAllAccountBalances(accounts, transactions)
+  const accountBalances = getAllAccountBalances(accounts, allTransactions)
 
   const balanceChartData = accounts.map((a) => ({
     name: shortAccountName(a.name),
@@ -111,9 +112,17 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl mb-1">{formatMonthLabel(month)}</h1>
-        <p className="text-sm text-[var(--color-ink-soft)]">Dashboard</p>
+      <div className="flex justify-between items-end flex-wrap gap-2">
+        <div>
+          <h1 className="text-2xl mb-1">{formatMonthLabel(month)}</h1>
+          <p className="text-sm text-[var(--color-ink-soft)]">Dashboard</p>
+        </div>
+        <input
+          type="month"
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+          className="border border-[var(--color-hairline)] rounded px-2 py-1 text-sm bg-white"
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-[1.4fr_1fr_1fr] gap-4">
@@ -125,58 +134,60 @@ export function Dashboard() {
             Across {accounts.length} account{accounts.length === 1 ? '' : 's'}
           </p>
         </div>
-        <SummaryCard label="This Month's Income" value={income} tone="income" />
-        <SummaryCard label="This Month's Expenses" value={expense} tone="expense" />
+        <SummaryCard label="Income" sublabel="All time" value={income} tone="income" />
+        <SummaryCard label="Expenses" sublabel="All time" value={expense} tone="expense" />
       </div>
 
-      {!loading && (breakdown.length > 0 || incomeBreakdown.length > 0) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg p-4">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-sm text-[var(--color-ink-soft)]">
-                {pieView === 'income' ? 'Income by category' : 'Spending by category'}
-              </h2>
-              <div className="flex text-xs rounded-md border border-[var(--color-hairline)] overflow-hidden">
-                <button
-                  onClick={() => setPieView('expense')}
-                  className={`px-2.5 py-1 ${pieView === 'expense' ? 'bg-[var(--color-ink)] text-[var(--color-paper)]' : ''}`}
-                >
-                  Expense
-                </button>
-                <button
-                  onClick={() => setPieView('income')}
-                  className={`px-2.5 py-1 ${pieView === 'income' ? 'bg-[var(--color-ink)] text-[var(--color-paper)]' : ''}`}
-                >
-                  Income
-                </button>
-              </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-sm text-[var(--color-ink-soft)]">
+              {pieView === 'income' ? 'Income by category' : 'Spending by category'}
+            </h2>
+            <div className="flex text-xs rounded-md border border-[var(--color-hairline)] overflow-hidden">
+              <button
+                onClick={() => setPieView('expense')}
+                className={`px-2.5 py-1 ${pieView === 'expense' ? 'bg-[var(--color-ink)] text-[var(--color-paper)]' : ''}`}
+              >
+                Expense
+              </button>
+              <button
+                onClick={() => setPieView('income')}
+                className={`px-2.5 py-1 ${pieView === 'income' ? 'bg-[var(--color-ink)] text-[var(--color-paper)]' : ''}`}
+              >
+                Income
+              </button>
             </div>
-            {activeBreakdown.length === 0 ? (
-              <p className="text-sm text-[var(--color-ink-soft)] py-16 text-center">
-                No {pieView === 'income' ? 'income' : 'spending'} this month.
-              </p>
-            ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie
-                    data={activeBreakdown}
-                    dataKey="amount"
-                    nameKey="category"
-                    innerRadius={50}
-                    outerRadius={75}
-                    label={renderCategoryLabel}
-                    labelLine={renderCategoryLabelLine}
-                  >
-                    {activeBreakdown.map((entry, i) => (
-                      <Cell key={entry.category} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v) => formatMoney(v)} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
           </div>
+          {loading ? (
+            <p className="text-sm text-[var(--color-ink-soft)] py-16 text-center">Loading…</p>
+          ) : activeBreakdown.length === 0 ? (
+            <p className="text-sm text-[var(--color-ink-soft)] py-16 text-center">
+              No {pieView === 'income' ? 'income' : 'spending'} this month.
+            </p>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={activeBreakdown}
+                  dataKey="amount"
+                  nameKey="category"
+                  innerRadius={50}
+                  outerRadius={75}
+                  label={renderCategoryLabel}
+                  labelLine={renderCategoryLabelLine}
+                >
+                  {activeBreakdown.map((entry, i) => (
+                    <Cell key={entry.category} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => formatMoney(v)} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
 
+        {balanceChartData.length > 0 && (
           <div className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg p-4">
             <h2 className="text-sm text-[var(--color-ink-soft)] mb-3">Account balances</h2>
             <ResponsiveContainer width="100%" height={BALANCE_CHART_HEIGHT}>
@@ -193,8 +204,8 @@ export function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div>
         <h2 className="text-sm text-[var(--color-ink-soft)] mb-2">Recent transactions</h2>
@@ -229,12 +240,15 @@ export function Dashboard() {
   )
 }
 
-function SummaryCard({ label, value, tone }) {
+function SummaryCard({ label, sublabel, value, tone }) {
   const color =
     tone === 'income' ? 'text-[var(--color-income)]' : tone === 'expense' ? 'text-[var(--color-expense)]' : 'text-[var(--color-ink)]'
   return (
     <div className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg p-4">
-      <p className="text-xs text-[var(--color-ink-soft)] mb-1">{label}</p>
+      <div className="flex justify-between items-baseline mb-1">
+        <p className="text-xs text-[var(--color-ink-soft)]">{label}</p>
+        {sublabel && <p className="text-[10px] text-[var(--color-ink-soft)]">{sublabel}</p>}
+      </div>
       <p className={`figure text-2xl tabular ${color}`}>{formatMoney(value)}</p>
     </div>
   )

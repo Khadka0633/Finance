@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { useAccounts, useMonthTransactions } from '../hooks/useLedgerData'
-import { currentMonth } from '../lib/dates'
+import { useAccounts, useAllTransactions } from '../hooks/useLedgerData'
 import { getAllAccountBalances } from '../lib/ledger'
 import { formatMoney } from '../lib/money'
 import { addAccount, unarchiveAccount, deleteAccount, updateAccount } from '../services/accounts'
@@ -17,7 +16,7 @@ const TYPES = [
 export function Accounts() {
   const { uid } = useOutletContext()
   const accounts = useAccounts(uid)
-  const { transactions } = useMonthTransactions(uid, currentMonth())
+  const { transactions } = useAllTransactions(uid)
   const balances = getAllAccountBalances(accounts, transactions)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)

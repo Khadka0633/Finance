@@ -40,22 +40,25 @@ export function AppLayout() {
             Sign out
           </button>
         </div>
-        <nav className="sm:hidden flex gap-1.5 px-4 pb-3 text-xs overflow-x-auto">
-          {links.map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              end={l.end}
-              className={({ isActive }) =>
-                isActive
-                  ? 'bg-[var(--color-ink)] text-[var(--color-paper)] px-3 py-1 rounded-full whitespace-nowrap'
-                  : 'text-[var(--color-ink-soft)] px-3 py-1 rounded-full whitespace-nowrap'
-              }
-            >
-              {l.label}
-            </NavLink>
-          ))}
-        </nav>
+        <div className="sm:hidden relative">
+          <nav className="flex gap-1.5 px-4 pb-3 text-xs overflow-x-auto">
+            {links.map((l) => (
+              <NavLink
+                key={l.to}
+                to={l.to}
+                end={l.end}
+                className={({ isActive }) =>
+                  isActive
+                    ? 'bg-[var(--color-ink)] text-[var(--color-paper)] px-3 py-1 rounded-full whitespace-nowrap'
+                    : 'text-[var(--color-ink-soft)] px-3 py-1 rounded-full whitespace-nowrap'
+                }
+              >
+                {l.label}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="pointer-events-none absolute right-0 top-0 bottom-3 w-8 bg-gradient-to-l from-[var(--color-paper-raised)] to-transparent" />
+        </div>
       </header>
       <main className="max-w-5xl mx-auto px-4 py-6">
         <Outlet context={{ uid: currentUser?.uid }} />
