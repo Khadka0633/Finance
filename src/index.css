@@ -41,4 +41,9 @@
     background-color: var(--color-ink);
     color: var(--color-paper);
   }
+  /* Clicking a chart bar/point shouldn't leave a focus-outline box behind */
+  .recharts-wrapper svg *:focus,
+  .recharts-wrapper svg *:focus-visible {
+    outline: none;
+  }
 }

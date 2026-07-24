@@ -159,7 +159,7 @@ export function Transactions() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className={`tabular text-sm ${row.isTransfer ? 'text-[var(--color-budget)]' : row.type === 'income' ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
+                    <span className={`tabular text-sm ${row.isTransfer ? 'text-[var(--color-ink)]' : row.type === 'income' ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
                       {row.isTransfer ? '' : row.type === 'income' ? '+' : '-'}{formatMoney(row.amount, { withSymbol: false })}
                     </span>
                     <div className="flex gap-2 text-xs sm:hidden sm:group-hover:flex">

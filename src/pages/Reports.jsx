@@ -1,13 +1,33 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from 'recharts'
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, ResponsiveContainer, LabelList } from 'recharts'
 import { fetchTransactionsInRange } from '../services/transactions'
+import { useAccounts } from '../hooks/useLedgerData'
 import { getCategoryBreakdown } from '../lib/ledger'
 import { formatMoney } from '../lib/money'
 import { monthOf, currentMonth, todayLocalDate, formatMonthLabel } from '../lib/dates'
 
+function renderTrendPointLabel(props, totalPoints) {
+  const { x, y, value, index } = props
+  if (!value) return null
+  const isLast = index === totalPoints - 1
+  return (
+    <text
+      x={x}
+      y={y - 10}
+      textAnchor={isLast ? 'end' : 'middle'}
+      dx={isLast ? 4 : 0}
+      fontSize={10}
+      fill="var(--color-expense)"
+    >
+      {formatMoney(value * 100, { withSymbol: false })}
+    </text>
+  )
+}
+
 export function Reports() {
   const { uid } = useOutletContext()
+  const accounts = useAccounts(uid)
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [months, setMonths] = useState(6)
@@ -73,6 +93,17 @@ export function Reports() {
     const count = new Date(y, m, 0).getDate()
     return Array.from({ length: count }, (_, i) => `${yyyyMm}-${String(i + 1).padStart(2, '0')}`)
   }
+
+  // Which month the transaction list below the trend chart should show:
+  // the month currently being viewed in 'month' mode, otherwise the most
+  // recent month in the range (matches the rightmost point on the chart).
+  const categoryListMonth = viewMode === 'month' ? selectedMonth : currentMonth()
+
+  const categoryTransactions = selectedCategory
+    ? transactions
+        .filter((t) => t.type === 'expense' && t.category === selectedCategory && monthOf(t.localDate) === categoryListMonth)
+        .sort((a, b) => (a.localDate < b.localDate ? 1 : -1))
+    : []
 
   const categoryTrend = selectedCategory
     ? (() => {
@@ -141,7 +172,7 @@ export function Reports() {
               {viewMode === 'month' ? `Income vs. expense — ${formatMonthLabel(selectedMonth)}` : 'Income vs. expense by month'}
             </h2>
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={trend} margin={{ top: 20 }}>
+              <BarChart data={trend} margin={{ top: 20 }} accessibilityLayer={false}>
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Bar dataKey="income" fill="var(--color-income)">
@@ -180,13 +211,33 @@ export function Reports() {
                 <button onClick={() => setSelectedCategory(null)} className="text-xs underline text-[var(--color-ink-soft)]">Close</button>
               </div>
               <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={categoryTrend}>
+                <LineChart data={categoryTrend} margin={{ top: 24, right: 24 }} accessibilityLayer={false}>
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => formatMoney(v * 100)} />
-                  <Line type="monotone" dataKey="amount" stroke="var(--color-expense)" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="amount" stroke="var(--color-expense)" strokeWidth={2} dot={{ r: 3 }}>
+                    <LabelList dataKey="amount" content={(p) => renderTrendPointLabel(p, categoryTrend.length)} />
+                  </Line>
                 </LineChart>
               </ResponsiveContainer>
+
+              <h3 className="text-xs text-[var(--color-ink-soft)] uppercase tracking-wide mt-4 mb-2">
+                {selectedCategory} transactions — {formatMonthLabel(categoryListMonth)}
+              </h3>
+              {categoryTransactions.length === 0 ? (
+                <p className="text-sm text-[var(--color-ink-soft)]">No transactions in this category this month.</p>
+              ) : (
+                <div className="divide-y divide-[var(--color-hairline)]">
+                  {categoryTransactions.map((t) => (
+                    <div key={t.id} className="flex justify-between items-start py-2 text-sm">
+                      <div>
+                        <p>{accounts.find((a) => a.id === t.accountId)?.name ?? '—'}</p>
+                        <p className="text-xs text-[var(--color-ink-soft)]">{t.localDate}{t.note ? ` · ${t.note}` : ''}</p>
+                      </div>
+                      <span className="tabular text-[var(--color-expense)]">-{formatMoney(t.amount, { withSymbol: false })}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>
