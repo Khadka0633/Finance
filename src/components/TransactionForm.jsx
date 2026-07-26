@@ -30,6 +30,15 @@ export function TransactionForm({ uid, accounts, existing, onClose }) {
   const [busy, setBusy] = useState(false)
   const [recentNotes, setRecentNotes] = useState([])
 
+  // Only feed the datalist notes that start with what's already typed, so
+  // the browser's native suggestion popup shows a prefix match instead of
+  // its own (inconsistent) idea of what "matches".
+  const filteredNotes = useMemo(() => {
+    const q = note.trim().toLowerCase()
+    if (!q) return recentNotes
+    return recentNotes.filter((n) => n.toLowerCase().startsWith(q))
+  }, [note, recentNotes])
+
   useEffect(() => {
     let cancelled = false
     fetchRecentNotes(uid).then((notes) => {
@@ -212,7 +221,7 @@ export function TransactionForm({ uid, accounts, existing, onClose }) {
           className="w-full border border-[var(--color-hairline)] rounded px-3 py-2 bg-white"
         />
         <datalist id="note-suggestions">
-          {recentNotes.map((n) => <option key={n} value={n} />)}
+          {filteredNotes.map((n) => <option key={n} value={n} />)}
         </datalist>
 
         <div className="flex gap-2 pt-2">
