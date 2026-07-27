@@ -23,6 +23,20 @@ export function parseMoneyInput(input) {
   return Number.isFinite(value) ? value : null
 }
 
+/**
+ * Compact display for a plain (already-divided, not cents) amount, for
+ * space-constrained chart labels/ticks: 1500 -> "1.5k", 120 -> "120".
+ */
+export function formatCompactAmount(value) {
+  const abs = Math.abs(value)
+  if (abs >= 1000) {
+    let s = (value / 1000).toFixed(1)
+    if (s.endsWith('.0')) s = s.slice(0, -2)
+    return `${s}k`
+  }
+  return `${Math.round(value)}`
+}
+
 /** Sum an array of integer-cent amounts safely */
 export function sumCents(amounts) {
   return amounts.reduce((total, n) => total + (Number.isFinite(n) ? n : 0), 0)

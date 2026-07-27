@@ -33,6 +33,27 @@ export function formatMonthLabel(yyyyMm) {
   return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 }
 
+/** Shift a "YYYY-MM" string by a number of months (negative = earlier) */
+export function shiftMonth(yyyyMm, delta) {
+  const [y, m] = yyyyMm.split('-').map(Number)
+  const d = new Date(y, m - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+/** Short month label with no year, e.g. "2026-07" -> "Jul" */
+export function formatMonthShort(yyyyMm) {
+  const [y, m] = yyyyMm.split('-').map(Number)
+  const d = new Date(y, m - 1, 1)
+  return d.toLocaleDateString(undefined, { month: 'short' })
+}
+
+/** Compact month label with 2-digit year, e.g. "2026-07" -> "Jul-26" */
+export function formatMonthCompact(yyyyMm) {
+  const [y, m] = yyyyMm.split('-').map(Number)
+  const d = new Date(y, m - 1, 1)
+  return `${d.toLocaleDateString(undefined, { month: 'short' })}-${String(y).slice(2)}`
+}
+
 /** Human label for a "YYYY-MM-DD" string, e.g. "Jul 22, 2026" */
 export function formatDateLabel(localDate) {
   if (!localDate) return ''
