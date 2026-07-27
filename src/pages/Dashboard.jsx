@@ -145,6 +145,8 @@ export function Dashboard() {
   const breakdown = getCategoryBreakdown(transactions, 'expense')
   const incomeBreakdown = getCategoryBreakdown(transactions, 'income')
   const activeBreakdown = pieView === 'income' ? incomeBreakdown : breakdown
+  const periodTotals = getIncomeExpenseTotals(transactions)
+  const periodActiveAmount = pieView === 'income' ? periodTotals.income : periodTotals.expense
   const accountBalances = getAllAccountBalances(accounts, allTransactions)
 
   const balanceChartData = accounts.map((a) => ({
@@ -185,7 +187,7 @@ export function Dashboard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg p-4">
-          <div className="flex justify-between items-center gap-2 mb-3 flex-nowrap">
+          <div className="flex justify-between items-center gap-2 sm:mb-3 flex-nowrap">
             <div className="flex text-xs rounded-md border border-[var(--color-hairline)] overflow-hidden shrink-0">
               <button
                 onClick={() => setPieView('expense')}
@@ -200,13 +202,16 @@ export function Dashboard() {
                 Income
               </button>
             </div>
+            <p className={`hidden sm:block flex-1 text-center text-sm font-medium tabular truncate px-1 ${pieView === 'income' ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
+              {formatMoney(periodActiveAmount)}
+            </p>
             <div className="relative shrink-0">
               <div className="flex items-center border border-[var(--color-hairline)] rounded bg-white text-xs">
                 <button
                   type="button"
                   onClick={() => stepPeriod(-1)}
                   aria-label="Previous period"
-                  className="px-3 py-2 text-sm leading-none hover:bg-[var(--color-paper-raised)]"
+                  className="px-4 py-2.5 text-base leading-none hover:bg-[var(--color-paper-raised)]"
                 >
                   ‹
                 </button>
@@ -221,7 +226,7 @@ export function Dashboard() {
                   type="button"
                   onClick={() => stepPeriod(1)}
                   aria-label="Next period"
-                  className="px-3 py-2 text-sm leading-none hover:bg-[var(--color-paper-raised)]"
+                  className="px-4 py-2.5 text-base leading-none hover:bg-[var(--color-paper-raised)]"
                 >
                   ›
                 </button>
@@ -254,6 +259,9 @@ export function Dashboard() {
               )}
             </div>
           </div>
+          <p className={`sm:hidden text-sm font-medium tabular mb-3 mt-1 ${pieView === 'income' ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
+            Rs. {formatCompactAmount(periodActiveAmount / 100)}
+          </p>
           {loading ? (
             <p className="text-sm text-[var(--color-ink-soft)] py-16 text-center">Loading…</p>
           ) : activeBreakdown.length === 0 ? (
