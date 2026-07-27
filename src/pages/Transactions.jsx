@@ -94,21 +94,16 @@ export function Transactions() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl">Transactions</h1>
-          <p className="text-sm text-[var(--color-ink-soft)]">{formatMonthLabel(month)}</p>
-          <div className="flex gap-3 text-xs tabular mt-1">
-            <span className="text-[var(--color-income)]">+{formatMoney(monthTotals.income, { withSymbol: false })}</span>
-            <span className="text-[var(--color-expense)]">-{formatMoney(monthTotals.expense, { withSymbol: false })}</span>
-            <span className={monthTotals.net >= 0 ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}>
-              Net {monthTotals.net >= 0 ? '+' : ''}{formatMoney(monthTotals.net, { withSymbol: false })}
-            </span>
-          </div>
+      <div>
+        <h1 className="text-2xl">Transactions</h1>
+        <p className="text-sm text-[var(--color-ink-soft)]">{formatMonthLabel(month)}</p>
+        <div className="flex gap-3 text-xs tabular mt-1">
+          <span className="text-[var(--color-income)]">+{formatMoney(monthTotals.income, { withSymbol: false })}</span>
+          <span className="text-[var(--color-expense)]">-{formatMoney(monthTotals.expense, { withSymbol: false })}</span>
+          <span className={monthTotals.net >= 0 ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}>
+            Net {monthTotals.net >= 0 ? '+' : ''}{formatMoney(monthTotals.net, { withSymbol: false })}
+          </span>
         </div>
-        <button onClick={() => { setEditing(null); setShowForm(true) }} className="btn-primary rounded px-4 py-2 text-sm">
-          + Add
-        </button>
       </div>
 
       <div className="flex gap-2 items-center flex-wrap">
@@ -185,6 +180,14 @@ export function Transactions() {
           </div>
         ))}
       </div>
+
+      <button
+        onClick={() => { setEditing(null); setShowForm(true) }}
+        aria-label="Add transaction"
+        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full btn-primary text-2xl leading-none shadow-lg flex items-center justify-center"
+      >
+        +
+      </button>
 
       {showForm && (
         <TransactionForm

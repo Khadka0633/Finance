@@ -56,16 +56,16 @@ export function Accounts() {
                 {formatMoney(groupTotal)}
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg divide-y divide-[var(--color-hairline)]">
               {group.map((a) => (
-                <div key={a.id} className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg p-4 flex justify-between items-start">
-                  <div>
-                    <p className="text-lg">{a.name}</p>
-                    <p className={`tabular text-xl mt-1 ${(balances.get(a.id) ?? 0) >= 0 ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
+                <div key={a.id} className="flex justify-between items-center px-4 py-3 gap-2">
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <p className="text-sm truncate">{a.name}</p>
+                    <p className={`tabular text-sm ${(balances.get(a.id) ?? 0) >= 0 ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
                       {formatMoney(balances.get(a.id) ?? 0)}
                     </p>
                   </div>
-                  <div className="flex flex-col gap-1 text-xs">
+                  <div className="flex gap-2 text-xs shrink-0">
                     <button onClick={() => setEditing(a)} className="underline text-[var(--color-ink-soft)]">Edit</button>
                     <button onClick={() => handleDelete(a)} className="underline text-[var(--color-expense)]">Delete</button>
                   </div>
