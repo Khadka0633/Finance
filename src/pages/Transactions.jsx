@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useOutletContext, useSearchParams } from 'react-router-dom'
 import { useAccounts, useMonthTransactions } from '../hooks/useLedgerData'
 import { currentMonth, formatDateLabel, formatMonthLabel, monthOf } from '../lib/dates'
 import { formatMoney } from '../lib/money'
@@ -12,10 +12,16 @@ export function Transactions() {
   const [month, setMonth] = useState(currentMonth())
   const accounts = useAccounts(uid)
   const { transactions } = useMonthTransactions(uid, month)
-  const [accountFilter, setAccountFilter] = useState('all')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [accountFilter, setAccountFilter] = useState(searchParams.get('account') ?? 'all')
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [toast, setToast] = useState(null)
+
+  function updateAccountFilter(value) {
+    setAccountFilter(value)
+    setSearchParams(value === 'all' ? {} : { account: value })
+  }
 
   const activeAccounts = accounts.filter((a) => !a.archived)
 
@@ -113,7 +119,7 @@ export function Transactions() {
           onChange={(e) => setMonth(e.target.value)}
           className="border border-[var(--color-hairline)] rounded px-2 py-1 text-sm bg-white"
         />
-        <select value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)} className="border border-[var(--color-hairline)] rounded px-2 py-1 text-sm bg-white">
+        <select value={accountFilter} onChange={(e) => updateAccountFilter(e.target.value)} className="border border-[var(--color-hairline)] rounded px-2 py-1 text-sm bg-white">
           <option value="all">All accounts</option>
           {activeAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>

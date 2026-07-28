@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useOutletContext, Link } from 'react-router-dom'
 import { useAccounts, useAllTransactions } from '../hooks/useLedgerData'
 import { getAllAccountBalances } from '../lib/ledger'
 import { formatMoney } from '../lib/money'
@@ -59,12 +59,12 @@ export function Accounts() {
             <div className="bg-[var(--color-paper-raised)] border border-[var(--color-hairline)] rounded-lg divide-y divide-[var(--color-hairline)]">
               {group.map((a) => (
                 <div key={a.id} className="flex justify-between items-center px-4 py-3 gap-2">
-                  <div className="flex items-baseline gap-2 min-w-0">
+                  <Link to={`/transactions?account=${a.id}`} className="flex items-baseline gap-2 min-w-0 hover:underline">
                     <p className="text-sm truncate">{a.name}</p>
                     <p className={`tabular text-sm ${(balances.get(a.id) ?? 0) >= 0 ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
                       {formatMoney(balances.get(a.id) ?? 0)}
                     </p>
-                  </div>
+                  </Link>
                   <div className="flex gap-2 text-xs shrink-0">
                     <button onClick={() => setEditing(a)} className="underline text-[var(--color-ink-soft)]">Edit</button>
                     <button onClick={() => handleDelete(a)} className="underline text-[var(--color-expense)]">Delete</button>
