@@ -6,6 +6,13 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signOut,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  fetchSignInMethodsForEmail,
+  GoogleAuthProvider,
+  EmailAuthProvider,
+  linkWithCredential,
+  linkWithPopup,
 } from 'firebase/auth'
 import { collection, query, limit, getDocs } from 'firebase/firestore'
 import { auth, googleProvider, db } from '../lib/firebase'
@@ -22,6 +29,10 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  // Set when a Google sign-in collides with an existing password account for
+  // the same email — holds what's needed to finish linking them once the
+  // person proves ownership of the existing account.
+  const [pendingLink, setPendingLink] = useState(null) // { email, credential } | null
 
   useEffect(() => {
     // Fires from the local cache immediately if offline, so the app
@@ -36,6 +47,12 @@ export function AuthProvider({ children }) {
   async function signup(email, password) {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     await addAccount(cred.user.uid, { name: 'Cash', type: 'cash' })
+    try {
+      await sendEmailVerification(cred.user)
+    } catch {
+      // Non-fatal — the account still works, and they can resend later
+      // from the verification banner.
+    }
     return cred.user
   }
 
@@ -56,8 +73,57 @@ export function AuthProvider({ children }) {
         await signInWithRedirect(auth, googleProvider)
         return null
       }
+      // This email already has a password account — instead of a dead-end
+      // error, capture what's needed to link Google onto that account and
+      // let the UI prompt for the existing password.
+      if (err.code === 'auth/account-exists-with-different-credential') {
+        const email = err.customData?.email
+        const credential = GoogleAuthProvider.credentialFromError(err)
+        const methods = email ? await fetchSignInMethodsForEmail(auth, email) : []
+        if (email && credential && methods.includes('password')) {
+          setPendingLink({ email, credential })
+          return null
+        }
+      }
       throw err
     }
+  }
+
+  /** Finishes linking a pending Google credential onto the existing
+   * password account, by first signing in with that password. */
+  async function resolveLinkWithPassword(password) {
+    if (!pendingLink) throw new Error('Nothing to link.')
+    const userCred = await signInWithEmailAndPassword(auth, pendingLink.email, password)
+    await linkWithCredential(userCred.user, pendingLink.credential)
+    setPendingLink(null)
+    return userCred.user
+  }
+
+  function cancelPendingLink() {
+    setPendingLink(null)
+  }
+
+  /** Deliberately add Google sign-in to the currently logged-in account
+   * (as opposed to the automatic conflict-recovery path above). */
+  async function linkGoogleToAccount() {
+    return linkWithPopup(auth.currentUser, googleProvider)
+  }
+
+  /** Deliberately add password sign-in to the currently logged-in account. */
+  async function linkPasswordToAccount(password) {
+    const credential = EmailAuthProvider.credential(auth.currentUser.email, password)
+    return linkWithCredential(auth.currentUser, credential)
+  }
+
+  async function resendVerificationEmail() {
+    if (auth.currentUser) await sendEmailVerification(auth.currentUser)
+  }
+
+  /** Sends a "reset your password" email for someone who forgot theirs and
+   * isn't signed in (as opposed to linkPasswordToAccount, which sets a
+   * password for an already-authenticated user). */
+  async function resetPassword(email) {
+    return sendPasswordResetEmail(auth, email)
   }
 
   async function ensureDefaultAccount(uid) {
@@ -72,7 +138,21 @@ export function AuthProvider({ children }) {
     return signOut(auth)
   }
 
-  const value = { currentUser, loading, signup, login, loginWithGoogle, logout }
+  const value = {
+    currentUser,
+    loading,
+    signup,
+    login,
+    loginWithGoogle,
+    logout,
+    pendingLink,
+    resolveLinkWithPassword,
+    cancelPendingLink,
+    linkGoogleToAccount,
+    linkPasswordToAccount,
+    resendVerificationEmail,
+    resetPassword,
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

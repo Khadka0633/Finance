@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { OfflineBanner } from './OfflineBanner'
+import { EmailVerificationBanner } from './EmailVerificationBanner'
 
 const links = [
   { to: '/', label: 'Dashboard', end: true },
@@ -17,6 +18,7 @@ export function AppLayout() {
   return (
     <div className="min-h-screen bg-[var(--color-paper)]">
       <OfflineBanner />
+      <EmailVerificationBanner />
       <header className="border-b border-[var(--color-hairline)] bg-[var(--color-paper-raised)]">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <span className="text-lg">Ledger</span>
