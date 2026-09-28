@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, ResponsiveContainer, LabelList } from 'recharts'
-import { fetchTransactionsInRange } from '../services/transactions'
+import { fetchTransactionsInRange, deleteTransaction, restoreTransaction } from '../services/transactions'
 import { useAccounts } from '../hooks/useLedgerData'
 import { getCategoryBreakdown } from '../lib/ledger'
 import { formatMoney, formatCompactAmount } from '../lib/money'
 import { monthOf, currentMonth, todayLocalDate, formatMonthLabel, formatDateLabel } from '../lib/dates'
+import { TransactionForm } from '../components/TransactionForm'
 
 function renderTrendPointLabel(props, totalPoints, type = 'expense') {
   const { x, y, value, index } = props
@@ -35,6 +36,10 @@ export function Reports() {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth())
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [selectedType, setSelectedType] = useState('expense')
+  const [editing, setEditing] = useState(null)
+  const [showForm, setShowForm] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0) // bump to refetch after an edit or delete
+  const [toast, setToast] = useState(null)
 
   // Compact chart numbers (1k, 38k) only make sense on the cramped mobile
   // width; desktop has room to show the full amount. 639px matches the
@@ -74,7 +79,20 @@ export function Reports() {
       setTransactions(data)
       setLoading(false)
     })
-  }, [uid, months, viewMode, selectedMonth])
+  }, [uid, months, viewMode, selectedMonth, reloadKey])
+
+  async function handleDelete(t) {
+    const deleted = await deleteTransaction(uid, t.id)
+    setReloadKey((k) => k + 1)
+    setToast({
+      message: 'Transaction deleted',
+      undo: async () => {
+        await restoreTransaction(uid, deleted)
+        setReloadKey((k) => k + 1)
+      },
+    })
+    setTimeout(() => setToast(null), 5000)
+  }
 
   const breakdown = getCategoryBreakdown(transactions, 'expense')
   const incomeBreakdown = getCategoryBreakdown(transactions, 'income')
@@ -301,9 +319,23 @@ export function Reports() {
                               {t.note ? ` · ${t.note}` : ''}
                             </p>
                           </div>
-                          <span className={`tabular ${selectedType === 'income' ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
-                            {selectedType === 'income' ? '+' : '-'}{formatMoney(t.amount, { withSymbol: false })}
-                          </span>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className={`tabular ${selectedType === 'income' ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'}`}>
+                              {selectedType === 'income' ? '+' : '-'}{formatMoney(t.amount, { withSymbol: false })}
+                            </span>
+                            <button
+                              onClick={() => { setEditing(t); setShowForm(true) }}
+                              className="text-xs underline"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(t)}
+                              className="text-xs underline text-[var(--color-expense)]"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -318,6 +350,31 @@ export function Reports() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {showForm && (
+        <TransactionForm
+          uid={uid}
+          accounts={accounts.filter((a) => !a.archived)}
+          existing={editing}
+          onClose={(savedDate) => {
+            setShowForm(false)
+            setEditing(null)
+            if (savedDate) setReloadKey((k) => k + 1)
+          }}
+        />
+      )}
+
+      {toast && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-[var(--color-ink)] text-[var(--color-paper)] rounded px-4 py-2 text-sm flex items-center gap-3 z-50">
+          <span>{toast.message}</span>
+          <button
+            onClick={() => { toast.undo(); setToast(null) }}
+            className="underline font-medium"
+          >
+            Undo
+          </button>
         </div>
       )}
     </div>
