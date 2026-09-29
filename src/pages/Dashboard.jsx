@@ -112,8 +112,8 @@ export function Dashboard() {
         <p className="text-sm text-[var(--color-ink-soft)]">Dashboard</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-[1.4fr_1fr_1fr] gap-4">
-        <div className="bg-[var(--color-ink)] rounded-lg p-6">
+      <div className="grid grid-cols-2 sm:grid-cols-[1.4fr_1fr_1fr] gap-4">
+        <div className="col-span-2 sm:col-span-1 bg-[var(--color-ink)] rounded-lg p-6">
           <p className="text-xs text-[#B7C0CC] mb-2">Total balance</p>
           <p className="figure tabular text-4xl text-[var(--color-paper)]">{formatMoney(totalBalance)}</p>
           <div className="mt-3 h-0.5 w-16 bg-[var(--color-budget)]" />
@@ -271,7 +271,7 @@ function SummaryCard({ label, sublabel, value, tone }) {
         <p className="text-xs text-[var(--color-ink-soft)]">{label}</p>
         {sublabel && <p className="text-[10px] text-[var(--color-ink-soft)]">{sublabel}</p>}
       </div>
-      <p className={`figure text-2xl tabular ${color}`}>{formatMoney(value)}</p>
+      <p className={`figure text-sm sm:text-2xl tabular whitespace-nowrap ${color}`}>{formatMoney(value)}</p>
     </div>
   )
 }
